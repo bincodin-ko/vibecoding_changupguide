@@ -2,13 +2,14 @@
 
 1인 바이브코딩 초보 창업자가 문제 정의부터 수익화까지 가는 길을 안내하는 프로그램을 만드는 저장소입니다.
 
-지금은 **리서치와 초안 단계**입니다. 아직 제품 코드는 없습니다.
+지금은 **기획 단계**입니다. 방향은 "14일 첫 사용자 스프린트"(비개발자 대상, 무료 공개)로 정했고, 아직 제품 코드는 없습니다.
 
 ## 문서
 
 | 문서 | 내용 |
 |---|---|
 | [docs/drafts.md](docs/drafts.md) | 리서치 결론, 처음 구상에서 빠져 있던 것, 프로그램 초안 3가지와 추천 |
+| [docs/sprint-spec.md](docs/sprint-spec.md) | 선택한 방향(3안)의 구체화: 14일 첫 사용자 스프린트. 비개발자 대상, 무료 공개 |
 | [research/01-youtube.md](research/01-youtube.md) | 유튜브 검색 결과 186건 분석 |
 | [research/02-korea-web.md](research/02-korea-web.md) | 네이버 검색, EO플래닛, 긱뉴스 등 한국 웹 자료 |
 | [research/03-global-web.md](research/03-global-web.md) | 해커뉴스 스레드와 해외 웹 검색, 경쟁 제품 |
