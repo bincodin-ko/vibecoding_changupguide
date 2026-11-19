@@ -10,6 +10,8 @@
 |---|---|
 | [docs/drafts.md](docs/drafts.md) | 리서치 결론, 처음 구상에서 빠져 있던 것, 프로그램 초안 3가지와 추천 |
 | [docs/sprint-spec.md](docs/sprint-spec.md) | 선택한 방향(3안)의 구체화: 14일 첫 사용자 스프린트. 비개발자 대상, 무료 공개 |
+| [문서판](https://claude.ai/artifact/BZmfoWT9yCc9rVFhXT3VMe) | 참가자가 직접 쓰는 14일 과제 문서(시험판). 과제 전문, 양식, 채널 지도, 기록판 |
+| [docs/pilot-run.md](docs/pilot-run.md) | 문서판 시험을 진행하는 방법: 나눠 주기, 참가자 모으기, 모을 숫자 |
 | [research/01-youtube.md](research/01-youtube.md) | 유튜브 검색 결과 186건 분석 |
 | [research/02-korea-web.md](research/02-korea-web.md) | 네이버 검색, EO플래닛, 긱뉴스 등 한국 웹 자료 |
 | [research/03-global-web.md](research/03-global-web.md) | 해커뉴스 스레드와 해외 웹 검색, 경쟁 제품 |
