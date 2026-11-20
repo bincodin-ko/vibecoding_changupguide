@@ -400,9 +400,9 @@ VIEWS[4] = () => {
       field('서비스 주소', null, P, 'serviceUrl', { type: 'url', placeholder: 'https://' }),
       h('div', { class: 'actions' }, btn, sc && failed > 0 ? toolPromptButton(`고칠 점 ${failed}개 지시문 복사`, 'sitefix') : null),
       sc ? h('div', { style: 'margin-top:14px' },
-        sc.error ? h('div', { class: 'warn' }, sc.error) : h('p', { class: 'hint' }, `${sc.at}에 점검함. ${sc.results.length}개 중 ${sc.results.length - failed}개 통과.`),
-        sc.results.map(r => h('div', { class: 'result ' + (r.pass ? 'pass' : 'fail') },
-          h('span', { class: 'mark' }, r.pass ? '통과' : '고치기'),
+        sc.error ? h('div', { class: 'warn' }, sc.error) : h('p', { class: 'hint' }, `${sc.at}에 점검함. ${sc.results.length}개 중 ${sc.results.length - failed}개 통과. "꼭 고치기"가 남아 있으면 이 단계를 통과할 수 없습니다.`),
+        sc.results.map(r => h('div', { class: 'result ' + (r.pass ? 'pass' : r.must ? 'fail' : 'nice') },
+          h('span', { class: 'mark' }, r.pass ? '통과' : r.must ? '꼭 고치기' : '고치면 좋음'),
           h('span', {}, r.label, h('span', { class: 'd' }, r.detail))))) : null),
     block('사람에게 묻지 않고 반응을 보는 준비', '방문 기록과 익명 한 줄 설문이 있으면 누구에게도 직접 묻지 않고 판정할 수 있습니다.',
       checklist([

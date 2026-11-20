@@ -134,10 +134,11 @@ button.link { background: none; border: 0; color: var(--act); padding: 0; cursor
 .checks b { display: block; }
 .checks span.d { color: var(--ink2); font-size: 14px; display: block; }
 
-.result { border-top: 1px solid var(--line); padding: 9px 0; display: grid; grid-template-columns: 52px 1fr; gap: 10px; }
+.result { border-top: 1px solid var(--line); padding: 9px 0; display: grid; grid-template-columns: 84px 1fr; gap: 10px; }
 .result .mark { font-weight: 700; font-size: 13.5px; }
 .result.pass .mark { color: var(--ink2); }
 .result.fail .mark { color: var(--seal); }
+.result.nice .mark { color: var(--ink); font-weight: 400; }
 .result .d { color: var(--ink2); font-size: 13.5px; display: block; }
 
 /* 판정 */

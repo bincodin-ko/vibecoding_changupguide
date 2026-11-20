@@ -14,6 +14,9 @@ import (
 // 만들기 도구가 처음에 넣어 두는 제목들. 이런 제목이 남아 있으면 고치지 않은 것이다.
 var placeholderTitles = []string{"vite app", "vite + react", "react app", "create next app", "next.js", "document", "untitled", "lovable", "bolt", "my app", "home", "index", "v0 app", "replit"}
 
+// 이 네 가지는 안 되면 사람을 불러와도 소용이 없어서, 통과해야 다음 단계로 간다.
+var mustPass = map[string]bool{"status": true, "title": true, "viewport": true, "index": true}
+
 type pageFacts struct {
 	title, description, viewport, robots, ogTitle, ogImage string
 	textLen                                                int
@@ -124,7 +127,7 @@ func runSiteCheck(ctx context.Context, rawURL string) *SiteCheck {
 		if pass {
 			fix = ""
 		}
-		sc.Results = append(sc.Results, CheckItem{ID: id, Label: label, Pass: pass, Detail: detail, Fix: fix})
+		sc.Results = append(sc.Results, CheckItem{ID: id, Label: label, Pass: pass, Detail: detail, Fix: fix, Must: mustPass[id]})
 	}
 
 	add("status", "주소가 정상으로 열린다", resp.StatusCode == 200,
@@ -167,7 +170,7 @@ func runSiteCheck(ctx context.Context, rawURL string) *SiteCheck {
 		"첫 화면의 핵심 문구가 스크립트 실행 전에도 페이지에 들어 있게 해 줘. 지금은 처음 받아 온 화면에 글이 거의 없어서 검색과 링크 미리보기에 불리해.")
 
 	add("share", "링크를 공유하면 미리보기가 뜬다", facts.ogTitle != "" && facts.ogImage != "",
-		fmt.Sprintf("미리보기 제목 %s · 미리보기 그림 %s", yesNo(facts.ogTitle != "", "있음", "없음"), yesNo(facts.ogImage != "", "있음", "없음")),
+		fmt.Sprintf("미리보기 제목 %s, 미리보기 그림 %s", yesNo(facts.ogTitle != "", "있음", "없음"), yesNo(facts.ogImage != "", "있음", "없음")),
 		"카카오톡이나 카페에 링크를 올렸을 때 제목과 그림이 보이도록 공유 미리보기(og:title, og:description, og:image)를 넣어 줘.")
 
 	add("contact", "의견을 보낼 곳이 있다", facts.hasContact,

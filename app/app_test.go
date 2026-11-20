@@ -159,6 +159,20 @@ func TestSiteCheck(t *testing.T) {
 			}
 		}
 	}
+	// 꼭 고칠 것이 남아 있으면 출시 준비 단계를 통과할 수 없다
+	p := &Project{ServiceURL: srv.URL, SiteCheck: sc}
+	normalize(p)
+	for _, id := range stageChecks[4] {
+		p.Checks[id] = true
+	}
+	if st := computeStages(p, defaultThresholds())[4]; st.Status == "done" || !strings.Contains(st.Next, "꼭 고칠 것") {
+		t.Errorf("꼭 고칠 것이 남았는데 통과했다: %+v", st)
+	}
+	page = good
+	p.SiteCheck = runSiteCheck(context.Background(), srv.URL)
+	if st := computeStages(p, defaultThresholds())[4]; st.Status != "done" {
+		t.Errorf("꼭 고칠 것이 없는데 통과하지 못했다: %+v", st)
+	}
 	if sc := runSiteCheck(context.Background(), "example.com"); sc.Error == "" {
 		t.Error("잘못된 주소인데 오류가 없다")
 	}

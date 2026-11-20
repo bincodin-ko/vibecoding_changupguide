@@ -121,7 +121,7 @@ func computeStages(p *Project, th Thresholds) []Stage {
 	}
 
 	done[1] = strong >= th.Evidence
-	note[1] = fmt.Sprintf("모은 글 %d건 · 분류 %d건 · 실제로 겪고 해결하려 한 글 %d건", total, classified, strong)
+	note[1] = fmt.Sprintf("모은 글 %d건, 분류 %d건, 실제로 겪고 해결하려 한 글 %d건", total, classified, strong)
 	if !done[1] {
 		next[1] = fmt.Sprintf("실제로 겪고 해결하려 한 글이 %d건 더 필요합니다.", th.Evidence-strong)
 	}
@@ -136,21 +136,38 @@ func computeStages(p *Project, th Thresholds) []Stage {
 
 	n3, ok3 := allChecked(p, stageChecks[3])
 	done[3] = ok3 && strings.HasPrefix(p.ServiceURL, "http")
-	note[3] = fmt.Sprintf("점검 %d/%d · 서비스 주소 %s", n3, len(stageChecks[3]), yesNo(strings.HasPrefix(p.ServiceURL, "http"), "있음", "없음"))
+	note[3] = fmt.Sprintf("점검 %d/%d, 서비스 주소 %s", n3, len(stageChecks[3]), yesNo(strings.HasPrefix(p.ServiceURL, "http"), "있음", "없음"))
 	if !done[3] {
 		next[3] = "점검 항목을 모두 확인하고 서비스 주소를 넣으세요."
 	}
 
 	n4, ok4 := allChecked(p, stageChecks[4])
-	siteOK := p.SiteCheck != nil && p.SiteCheck.Error == "" && len(p.SiteCheck.Results) > 0
-	done[4] = ok4 && siteOK
-	note[4] = fmt.Sprintf("준비 %d/%d · 첫 화면 점검 %s", n4, len(stageChecks[4]), yesNo(siteOK, "함", "안 함"))
-	if !done[4] {
-		next[4] = "첫 화면 점검을 실행하고 준비 항목을 확인하세요."
+	siteRan := p.SiteCheck != nil && p.SiteCheck.Error == "" && len(p.SiteCheck.Results) > 0
+	mustLeft, niceLeft := 0, 0
+	if siteRan {
+		for _, r := range p.SiteCheck.Results {
+			if !r.Pass && r.Must {
+				mustLeft++
+			} else if !r.Pass {
+				niceLeft++
+			}
+		}
+	}
+	done[4] = ok4 && siteRan && mustLeft == 0
+	switch {
+	case !siteRan:
+		note[4] = fmt.Sprintf("준비 %d/%d, 첫 화면 점검은 아직 안 함", n4, len(stageChecks[4]))
+		next[4] = "첫 화면 점검을 실행하세요."
+	case mustLeft > 0:
+		note[4] = fmt.Sprintf("준비 %d/%d, 첫 화면에서 꼭 고칠 것 %d개, 고치면 좋은 것 %d개", n4, len(stageChecks[4]), mustLeft, niceLeft)
+		next[4] = fmt.Sprintf("첫 화면에서 꼭 고칠 것 %d개를 고치고 다시 점검하세요.", mustLeft)
+	default:
+		note[4] = fmt.Sprintf("준비 %d/%d, 첫 화면에서 꼭 고칠 것 없음, 고치면 좋은 것 %d개", n4, len(stageChecks[4]), niceLeft)
+		next[4] = "준비 항목을 모두 확인하세요."
 	}
 
 	done[5] = posted >= 2
-	note[5] = fmt.Sprintf("올린 글 %d건 · 글을 보고 들어온 방문 %d", posted, visits)
+	note[5] = fmt.Sprintf("올린 글 %d건, 글을 보고 들어온 방문 %d", posted, visits)
 	if !done[5] {
 		next[5] = fmt.Sprintf("글을 %d건 더 올리고 결과를 기록하세요.", 2-posted)
 	}

@@ -61,7 +61,8 @@ type CheckItem struct {
 	Label  string `json:"label"`
 	Pass   bool   `json:"pass"`
 	Detail string `json:"detail"`
-	Fix    string `json:"fix"` // 통과하지 못했을 때 코딩 도구에 줄 지시
+	Fix    string `json:"fix"`  // 통과하지 못했을 때 코딩 도구에 줄 지시
+	Must   bool   `json:"must"` // 이게 안 되면 단계를 통과할 수 없는 항목
 }
 
 type Place struct {
