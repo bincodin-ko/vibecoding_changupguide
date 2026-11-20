@@ -1,0 +1,43 @@
+# main에 올릴 때마다 실제 Windows에서 시험하고 .exe를 만든다.
+# v로 시작하는 태그(예: v0.1.0)를 올리면 그 .exe를 내려받을 수 있는 릴리스도 만든다.
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: app
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: app/go.mod
+      - name: 시험
+        run: go vet ./... && go test ./...
+      - name: exe 만들기
+        run: go build -trimpath -ldflags "-H windowsgui -s -w" -o ../dist/VibeCoach.exe .
+      - name: 실행 확인
+        run: |
+          ../dist/VibeCoach.exe --no-window --port 47830 --data "$RUNNER_TEMP/vibecoach" &
+          for i in $(seq 1 20); do sleep 1; curl -sf http://127.0.0.1:47830/ -o page.html && break; done
+          grep -q 'id="app"' page.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VibeCoach-windows
+          path: dist/VibeCoach.exe
+      - name: 릴리스 만들기
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" ../dist/VibeCoach.exe --title "$GITHUB_REF_NAME" --generate-notes
