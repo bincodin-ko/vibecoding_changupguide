@@ -211,7 +211,7 @@ function renderRail() {
           : st.status === 'now' ? h('span', { class: 'now-tag' }, '지금') : h('span', {}))))),
     h('div', { class: 'rail-foot' },
       h('button', { onclick: openSettings }, '설정'),
-      h('p', { class: 'keys' }, 'AI 키 ' + (S.settings.hasAiKey ? '있음' : '없음') + ', 네이버 검색 키 ' + (S.settings.hasNaver ? '있음' : '없음'))),
+      h('p', { class: 'keys' }, 'AI 키 ' + (S.settings.hasAiKey ? '있음' : '없음'))),
   );
 }
 
@@ -309,7 +309,7 @@ VIEWS[1] = () => {
           h('button', { 'aria-pressed': String(evFilter === k), onclick: () => { evFilter = k; paintList(); } }, label))),
       shown.length === 0 ? h('p', { class: 'hint' }, P.evidence.length === 0 ? '아직 모은 글이 없습니다. 위에서 검색하거나 붙여넣어 주세요.' : '이 조건에 맞는 글이 없습니다.') : null,
       shown.slice(0, 60).map(e => h('div', { class: 'ev' },
-        h('h4', {}, e.link ? h('a', { href: e.link, target: '_blank', rel: 'noreferrer' }, e.title) : e.title),
+        h('h4', {}, e.link ? h('a', { href: e.link, onclick: (ev) => { ev.preventDefault(); api('POST', '/api/open', { url: e.link }).catch(err => toast(err.message, true)); } }, e.title) : e.title),
         h('div', { class: 'meta' }, [e.source, e.date, e.keyword ? '검색어: ' + e.keyword : ''].filter(Boolean).join(', ')),
         e.snippet ? h('p', {}, e.snippet) : null,
         e.problem ? h('div', { class: 'ai' }, (e.by === 'ai' ? 'AI가 읽은 문제: ' : '문제: ') + e.problem + (e.quote ? ` / 표현: "${e.quote}"` : '')) : null,
@@ -323,14 +323,20 @@ VIEWS[1] = () => {
   paintTally(); paintList();
 
   const kw = h('input', { type: 'text', placeholder: '예: 기저귀 최저가 비교' });
-  const searchBtn = h('button', { class: 'btn' }, '네이버에서 모으기');
-  searchBtn.onclick = () => run(searchBtn, '모으는 중…', async () => {
-    const data = await api('POST', '/api/collect/naver', { keyword: kw.value });
-    applyState(data.state); kw.value = '';
-    toast(`${data.found}건을 찾아 새 글 ${data.added}건을 더했습니다.`);
-    render();
-  });
-  const paste = h('textarea', { placeholder: '직접 찾은 글의 제목과 내용을 붙여넣으세요. 글과 글 사이는 빈 줄로 띄웁니다. 주소를 같이 붙여넣으면 링크로 저장됩니다.' });
+  const used = h('p', { class: 'hint' });
+  const paintUsed = () => { used.hidden = P.keywords.length === 0; used.textContent = '지금까지 찾아본 검색어: ' + P.keywords.join(', '); };
+  paintUsed();
+  const openSearch = (place, label) => {
+    const b = h('button', { class: 'btn quiet' }, label);
+    b.onclick = () => run(b, '여는 중…', async () => {
+      const data = await api('POST', '/api/open', { place, keyword: kw.value });
+      P.keywords = data.state.project.keywords;
+      paintUsed();
+      toast('브라우저에서 네이버 검색을 열었습니다. 읽고 돌아와 붙여넣으세요.');
+    });
+    return b;
+  };
+  const paste = h('textarea', { placeholder: '글 제목\n글 내용 한두 문단\nhttps://글 주소 (선택)\n\n다음 글 제목\n…' });
   const pasteBtn = h('button', { class: 'btn quiet' }, '붙여넣은 글 더하기');
   pasteBtn.onclick = () => run(pasteBtn, '더하는 중…', async () => {
     const data = await api('POST', '/api/collect/paste', { text: paste.value });
@@ -348,15 +354,15 @@ VIEWS[1] = () => {
 
   return h('div', {},
     block('지금까지의 근거', null, tally),
-    block('고객이 쓴 글 모으기', '사람에게 직접 묻지 않습니다. 같은 문제를 겪는 사람들이 지식iN, 카페, 블로그에 이미 써 둔 글을 모아 읽습니다. 제목과 요약만 가져옵니다.',
-      S.settings.hasNaver
-        ? h('div', { class: 'row' }, h('label', { class: 'field grow' }, h('span', {}, '검색어'), h('small', {}, '고객이 이 문제를 검색할 때 쓸 말로 넣습니다. 여러 번 바꿔 가며 모으세요.'), kw), h('div', { class: 'field' }, searchBtn))
-        : h('p', { class: 'hint' }, '네이버 검색 키를 넣으면 검색어만으로 글을 모아 옵니다. ', h('button', { class: 'link', onclick: openSettings }, '설정에서 키 넣기'), ' 키가 없어도 아래에 직접 붙여넣어 쓸 수 있습니다.'),
-      P.keywords.length ? h('p', { class: 'hint' }, '지금까지 쓴 검색어: ' + P.keywords.join(', ')) : null,
-      h('label', { class: 'field' }, h('span', {}, '직접 붙여넣기'), paste),
+    block('고객이 쓴 글 모으기', '사람에게 직접 묻지 않습니다. 같은 문제를 겪는 사람들이 지식iN, 카페, 블로그에 이미 써 둔 글을 찾아 읽습니다. 프로그램은 검색 화면을 열어 주기만 하고, 글을 대신 가져오지 않습니다.',
+      h('label', { class: 'field' }, h('span', {}, '1. 검색어'), h('small', {}, '고객이 이 문제를 검색할 때 쓸 말로 넣습니다. 여러 번 바꿔 가며 찾아보세요.'), kw),
+      h('div', { class: 'actions' }, openSearch('kin', '지식iN에서 찾기'), openSearch('cafe', '카페 글에서 찾기'), openSearch('blog', '블로그에서 찾기')),
+      used,
+      h('label', { class: 'field', style: 'margin-top:16px' }, h('span', {}, '2. 읽은 글 붙여넣기'),
+        h('small', {}, '내 고객이 쓴 글이다 싶으면 제목과 내용을 복사해 붙여넣습니다. 글과 글 사이는 빈 줄로 띄우고, 주소를 같이 붙여넣으면 링크로 저장됩니다. 붙여넣은 글은 이 컴퓨터에만 저장됩니다.'), paste),
       h('div', { class: 'actions' }, pasteBtn)),
     block('글 읽고 분류하기', '글마다 글쓴이가 이 문제를 실제로 겪는지, 스스로 해결하려 했는지를 표시합니다. 광고와 업체 글은 "해당 없음"입니다.',
-      S.settings.hasAiKey ? h('div', { class: 'actions' }, classifyBtn, h('span', { class: 'hint' }, 'AI의 분류가 틀린 글은 아래에서 직접 고치세요.'))
+      S.settings.hasAiKey ? h('div', { class: 'actions' }, classifyBtn, h('span', { class: 'hint' }, '누르면 붙여넣은 글의 제목과 내용이 AI 서비스로 전송됩니다. 분류가 틀린 글은 아래에서 직접 고치세요.'))
         : h('p', { class: 'hint' }, 'AI 키가 있으면 한꺼번에 분류해 줍니다. ', h('button', { class: 'link', onclick: openSettings }, '설정에서 키 넣기'), ' 키가 없으면 아래에서 하나씩 눌러 분류합니다.'),
       list),
     block('문제와 표현 정리', '분류한 글에서 자주 나온 문제, 사람들이 지금 쓰는 해결 방법, 첫 화면 문구로 쓸 표현을 뽑습니다.',
@@ -572,7 +578,7 @@ VIEWS[9] = () => {
 // ---------- 설정 ----------
 
 function openSettings() {
-  const v = { aiKey: '', aiModel: S.settings.aiModel, naverId: '', naverSecret: '' };
+  const v = { aiKey: '', aiModel: S.settings.aiModel };
   const th = { ...S.settings.thresholds };
   const f = (label, hint, obj, key, type, ph) => {
     const i = h('input', { type: type || 'text', placeholder: ph || null, value: obj[key] ?? '', oninput: () => { obj[key] = type === 'number' ? (parseInt(i.value, 10) || 0) : i.value; } });
@@ -590,10 +596,6 @@ function openSettings() {
     h('fieldset', {}, h('legend', {}, 'AI'),
       f('Claude API 키', S.settings.hasAiKey ? '저장된 키가 있습니다. 바꿀 때만 새로 넣으세요.' : '넣으면 글 분류와 초안 작성을 프로그램 안에서 바로 합니다. 없으면 지시문을 복사해 쓰던 AI에 붙여넣는 방식으로 동작합니다. 사용료는 키를 발급한 계정에 청구됩니다.', v, 'aiKey', 'password', 'sk-ant-...'),
       f('모델 이름', '모르면 그대로 두세요.', v, 'aiModel')),
-    h('fieldset', {}, h('legend', {}, '네이버 검색'),
-      h('p', { class: 'hint' }, '네이버 개발자 센터에서 애플리케이션을 등록하고 "검색" 사용을 고르면 Client ID와 Secret이 나옵니다. ' + (S.settings.hasNaver ? '저장된 키가 있습니다.' : '없어도 글을 직접 붙여넣어 쓸 수 있습니다.')),
-      f('Client ID', null, v, 'naverId'),
-      f('Client Secret', null, v, 'naverSecret', 'password')),
     h('fieldset', {}, h('legend', {}, '판정 기준'),
       h('p', { class: 'hint' }, '출발점으로 잡은 값입니다. 내 서비스에 맞게 바꿀 수 있습니다.'),
       h('div', { class: 'nums' },

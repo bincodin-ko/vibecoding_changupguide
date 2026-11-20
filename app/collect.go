@@ -1,17 +1,12 @@
 package main
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"html"
-	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
-	"time"
 )
 
 func newID() string {
@@ -20,73 +15,29 @@ func newID() string {
 	return hex.EncodeToString(b)
 }
 
-// 네이버 검색 API 주소. 시험할 때 가짜 서버로 바꿀 수 있게 변수로 둔다.
-var naverBase = "https://openapi.naver.com"
-
-var naverKinds = map[string]string{"blog": "블로그", "cafearticle": "카페", "kin": "지식iN"}
-
-var tagRe = regexp.MustCompile(`<[^>]+>`)
-
-func cleanText(s string) string {
-	return strings.TrimSpace(html.UnescapeString(tagRe.ReplaceAllString(s, "")))
-}
-
-// 네이버 검색 API로 키워드에 대한 글을 찾아 온다. 제목과 요약만 가져오며 본문은 읽지 않는다.
-func collectNaver(ctx context.Context, st *Settings, keyword string, kinds []string) ([]Evidence, error) {
-	if st.NaverID == "" || st.NaverSecret == "" {
-		return nil, fmt.Errorf("네이버 검색 키가 없습니다. 설정에서 넣거나, 찾은 글을 직접 붙여넣어 주세요.")
-	}
-	if len(kinds) == 0 {
-		kinds = []string{"kin", "cafearticle", "blog"}
-	}
-	client := &http.Client{Timeout: 15 * time.Second}
-	var out []Evidence
-	for _, kind := range kinds {
-		label, ok := naverKinds[kind]
-		if !ok {
-			continue
-		}
-		u := fmt.Sprintf("%s/v1/search/%s.json?display=30&sort=sim&query=%s", naverBase, kind, url.QueryEscape(keyword))
-		req, _ := http.NewRequestWithContext(ctx, "GET", u, nil)
-		req.Header.Set("X-Naver-Client-Id", st.NaverID)
-		req.Header.Set("X-Naver-Client-Secret", st.NaverSecret)
-		resp, err := client.Do(req)
-		if err != nil {
-			return out, fmt.Errorf("네이버 검색에 연결하지 못했습니다. 인터넷 연결을 확인해 주세요. (%v)", err)
-		}
-		var body struct {
-			ErrorMessage string `json:"errorMessage"`
-			Items        []struct {
-				Title       string `json:"title"`
-				Link        string `json:"link"`
-				Description string `json:"description"`
-				Postdate    string `json:"postdate"`
-			} `json:"items"`
-		}
-		err = json.NewDecoder(resp.Body).Decode(&body)
-		resp.Body.Close()
-		if resp.StatusCode == 401 || resp.StatusCode == 403 {
-			return out, fmt.Errorf("네이버 검색 키가 맞지 않습니다. 설정에서 Client ID와 Secret을 다시 확인해 주세요.")
-		}
-		if resp.StatusCode == 429 {
-			return out, fmt.Errorf("네이버 검색의 하루 사용량을 넘었습니다. 내일 다시 시도해 주세요.")
-		}
-		if resp.StatusCode != 200 || err != nil {
-			return out, fmt.Errorf("네이버 검색이 실패했습니다. (%d %s)", resp.StatusCode, body.ErrorMessage)
-		}
-		for _, it := range body.Items {
-			date := it.Postdate
-			if len(date) == 8 {
-				date = date[:4] + "-" + date[4:6] + "-" + date[6:]
-			}
-			out = append(out, Evidence{ID: newID(), Source: label, Keyword: keyword,
-				Title: cleanText(it.Title), Snippet: cleanText(it.Description), Link: it.Link, Date: date})
-		}
-	}
-	return out, nil
-}
-
 var urlRe = regexp.MustCompile(`https?://\S+`)
+
+// 검색어로 네이버의 검색 화면 주소를 만든다. 프로그램이 글을 가져오지 않고,
+// 사용자의 브라우저에서 네이버 검색을 열어 줄 뿐이다.
+// (네이버 검색 API는 약관상 결과를 저장하거나 AI에 넣을 수 없어 쓰지 않는다.)
+var searchPlaces = map[string]string{"kin": "kin", "cafe": "cafearticle", "blog": "blog"}
+
+func searchURL(place, keyword string) (string, error) {
+	where, ok := searchPlaces[place]
+	if !ok || strings.TrimSpace(keyword) == "" {
+		return "", fmt.Errorf("검색어를 넣어 주세요.")
+	}
+	return "https://search.naver.com/search.naver?where=" + where + "&query=" + url.QueryEscape(strings.TrimSpace(keyword)), nil
+}
+
+// 브라우저로 열어도 되는 주소인지 본다. 웹 주소만 연다.
+func checkOpenURL(raw string) error {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return fmt.Errorf("열 수 없는 주소입니다.")
+	}
+	return nil
+}
 
 // 사용자가 붙여넣은 글을 빈 줄 기준으로 나눠 한 건씩 근거로 만든다.
 // 첫 줄은 제목, 나머지는 내용으로 보고, 안에 주소가 있으면 링크로 뺀다.

@@ -36,7 +36,7 @@ type Customer struct {
 // 고객이 이미 쓴 글 한 건. Experienced/Tried가 nil이면 아직 분류하지 않은 글이다.
 type Evidence struct {
 	ID          string `json:"id"`
-	Source      string `json:"source"` // 블로그, 카페, 지식iN, 붙여넣기
+	Source      string `json:"source"` // 붙여넣기
 	Keyword     string `json:"keyword"`
 	Title       string `json:"title"`
 	Snippet     string `json:"snippet"`
@@ -106,11 +106,9 @@ type LogEntry struct {
 
 // 프로그램 설정. 키는 화면으로 다시 내보내지 않는다.
 type Settings struct {
-	AIKey       string     `json:"aiKey"`
-	AIModel     string     `json:"aiModel"`
-	NaverID     string     `json:"naverId"`
-	NaverSecret string     `json:"naverSecret"`
-	Thresholds  Thresholds `json:"thresholds"`
+	AIKey      string     `json:"aiKey"`
+	AIModel    string     `json:"aiModel"`
+	Thresholds Thresholds `json:"thresholds"`
 }
 
 // 판정 기준. 출발점으로 잡은 값이며 설정에서 바꿀 수 있다.

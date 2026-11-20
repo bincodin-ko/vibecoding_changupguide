@@ -23,13 +23,18 @@ func openWindow(url, title string) {
 		},
 	})
 	if w == nil {
-		exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+		openBrowser(url)
 		messageBox(title, "브라우저에서 프로그램 화면을 열었습니다.\n\n이 창을 닫으면 프로그램이 종료됩니다.", 0x40)
 		return
 	}
 	defer w.Destroy()
 	w.Navigate(url)
 	w.Run()
+}
+
+// 주소를 기본 브라우저로 연다. 시험할 때 바꿔 끼울 수 있게 변수로 둔다.
+var openBrowser = func(url string) error {
+	return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
 }
 
 func showError(msg string) { messageBox("바이브 창업 코치", msg, 0x10) }

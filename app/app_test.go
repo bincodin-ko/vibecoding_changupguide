@@ -91,35 +91,24 @@ func TestParsePasted(t *testing.T) {
 	}
 }
 
-func TestCollectNaver(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Naver-Client-Id") != "id" {
-			w.WriteHeader(401)
-			io.WriteString(w, `{"errorMessage":"bad key"}`)
-			return
+func TestSearchShortcut(t *testing.T) {
+	u, err := searchURL("kin", " 기저귀 최저가 ")
+	if err != nil || u != "https://search.naver.com/search.naver?where=kin&query=%EA%B8%B0%EC%A0%80%EA%B7%80+%EC%B5%9C%EC%A0%80%EA%B0%80" {
+		t.Fatalf("검색 주소가 다르다: %v %s", err, u)
+	}
+	if _, err := searchURL("kin", "  "); err == nil {
+		t.Fatal("검색어가 없는데 주소가 나왔다")
+	}
+	if _, err := searchURL("somewhere", "x"); err == nil {
+		t.Fatal("모르는 곳인데 주소가 나왔다")
+	}
+	for _, bad := range []string{"", "file:///c:/windows/system32/calc.exe", "javascript:alert(1)", "cmd.exe", "https://"} {
+		if checkOpenURL(bad) == nil {
+			t.Errorf("열면 안 되는 주소를 통과시켰다: %q", bad)
 		}
-		if !strings.HasPrefix(r.URL.Path, "/v1/search/") || r.URL.Query().Get("query") != "기저귀 최저가" {
-			t.Errorf("요청이 다르다: %s", r.URL)
-		}
-		io.WriteString(w, `{"items":[{"title":"<b>기저귀</b> 최저가 &amp; 비교","link":"https://x/1","description":"매번 <b>비교</b>해요","postdate":"20261101"}]}`)
-	}))
-	defer srv.Close()
-	old := naverBase
-	naverBase = srv.URL
-	defer func() { naverBase = old }()
-
-	items, err := collectNaver(context.Background(), &Settings{NaverID: "id", NaverSecret: "s"}, "기저귀 최저가", []string{"blog"})
-	if err != nil || len(items) != 1 {
-		t.Fatalf("수집 실패: %v %d", err, len(items))
 	}
-	if items[0].Title != "기저귀 최저가 & 비교" || items[0].Date != "2026-11-01" || items[0].Source != "블로그" {
-		t.Fatalf("글을 잘못 읽었다: %+v", items[0])
-	}
-	if _, err := collectNaver(context.Background(), &Settings{NaverID: "wrong", NaverSecret: "s"}, "기저귀 최저가", []string{"blog"}); err == nil || !strings.Contains(err.Error(), "키가 맞지") {
-		t.Fatalf("틀린 키 안내가 없다: %v", err)
-	}
-	if _, err := collectNaver(context.Background(), &Settings{}, "x", nil); err == nil {
-		t.Fatal("키가 없는데 오류가 없다")
+	if err := checkOpenURL("https://kin.naver.com/qna/detail.naver?docId=1"); err != nil {
+		t.Errorf("웹 주소를 막았다: %v", err)
 	}
 }
 

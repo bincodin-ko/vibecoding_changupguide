@@ -40,7 +40,6 @@ type stateResponse struct {
 type settingsUI struct {
 	HasAIKey   bool       `json:"hasAiKey"`
 	AIModel    string     `json:"aiModel"`
-	HasNaver   bool       `json:"hasNaver"`
 	Thresholds Thresholds `json:"thresholds"`
 }
 
@@ -55,7 +54,7 @@ func (s *Server) state() (*stateResponse, error) {
 	}
 	return &stateResponse{
 		Project:  p,
-		Settings: settingsUI{HasAIKey: st.AIKey != "", AIModel: st.AIModel, HasNaver: st.NaverID != "" && st.NaverSecret != "", Thresholds: st.Thresholds},
+		Settings: settingsUI{HasAIKey: st.AIKey != "", AIModel: st.AIModel, Thresholds: st.Thresholds},
 		Stages:   computeStages(p, st.Thresholds),
 		Judge:    judge(p, st.Thresholds),
 		Customer: customerProblems(p.Customer),
@@ -149,11 +148,9 @@ func (s *Server) routes() http.Handler {
 
 	mux.HandleFunc("POST /api/settings", s.guard(func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
-			AIKey       *string     `json:"aiKey"`
-			AIModel     *string     `json:"aiModel"`
-			NaverID     *string     `json:"naverId"`
-			NaverSecret *string     `json:"naverSecret"`
-			Thresholds  *Thresholds `json:"thresholds"`
+			AIKey      *string     `json:"aiKey"`
+			AIModel    *string     `json:"aiModel"`
+			Thresholds *Thresholds `json:"thresholds"`
 		}
 		if err := decode(r, &in); err != nil {
 			fail(w, 400, "보낸 내용을 읽지 못했습니다.")
@@ -177,8 +174,6 @@ func (s *Server) routes() http.Handler {
 		}
 		set(&st.AIKey, in.AIKey)
 		set(&st.AIModel, in.AIModel)
-		set(&st.NaverID, in.NaverID)
-		set(&st.NaverSecret, in.NaverSecret)
 		if in.Thresholds != nil {
 			st.Thresholds = *in.Thresholds
 		}
@@ -189,38 +184,46 @@ func (s *Server) routes() http.Handler {
 		s.replyState(w, nil)
 	}))
 
-	mux.HandleFunc("POST /api/collect/naver", s.guard(func(w http.ResponseWriter, r *http.Request) {
+	// 주소를 사용자의 기본 브라우저로 연다. 검색 바로가기와 모은 글의 링크에 쓴다.
+	mux.HandleFunc("POST /api/open", s.guard(func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
-			Keyword string   `json:"keyword"`
-			Kinds   []string `json:"kinds"`
+			URL     string `json:"url"`
+			Place   string `json:"place"`
+			Keyword string `json:"keyword"`
 		}
-		if err := decode(r, &in); err != nil || strings.TrimSpace(in.Keyword) == "" {
-			fail(w, 400, "검색어를 넣어 주세요.")
+		if err := decode(r, &in); err != nil {
+			fail(w, 400, "보낸 내용을 읽지 못했습니다.")
 			return
 		}
-		st, _ := s.store.LoadSettings()
-		p, _ := s.store.LoadProject()
-		ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
-		defer cancel()
-		items, err := collectNaver(ctx, st, strings.TrimSpace(in.Keyword), in.Kinds)
-		if err != nil && len(items) == 0 {
+		target := in.URL
+		if in.Place != "" {
+			u, err := searchURL(in.Place, in.Keyword)
+			if err != nil {
+				fail(w, 400, err.Error())
+				return
+			}
+			target = u
+			// 어떤 검색어로 찾아봤는지는 사용자가 넣은 말이므로 기록해 둔다.
+			p, _ := s.store.LoadProject()
+			kw := strings.TrimSpace(in.Keyword)
+			has := false
+			for _, k := range p.Keywords {
+				has = has || k == kw
+			}
+			if !has {
+				p.Keywords = append(p.Keywords, kw)
+				s.store.SaveProject(p)
+			}
+		}
+		if err := checkOpenURL(target); err != nil {
 			fail(w, 400, err.Error())
 			return
 		}
-		added := addEvidence(p, items)
-		kw := strings.TrimSpace(in.Keyword)
-		has := false
-		for _, k := range p.Keywords {
-			has = has || k == kw
-		}
-		if !has {
-			p.Keywords = append(p.Keywords, kw)
-		}
-		if err := s.store.SaveProject(p); err != nil {
-			fail(w, 500, err.Error())
+		if err := openBrowser(target); err != nil {
+			fail(w, 500, "브라우저를 열지 못했습니다. 주소를 직접 복사해 여세요: "+target)
 			return
 		}
-		s.replyState(w, map[string]any{"found": len(items), "added": added})
+		s.replyState(w, map[string]any{"opened": target})
 	}))
 
 	mux.HandleFunc("POST /api/collect/paste", s.guard(func(w http.ResponseWriter, r *http.Request) {

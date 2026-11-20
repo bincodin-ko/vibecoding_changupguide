@@ -40,6 +40,8 @@ func main() {
 	}()
 
 	if *noWindow {
+		// 창 없이 켤 때(시험용)는 브라우저도 열지 않고 열려던 주소만 출력한다.
+		openBrowser = func(u string) error { fmt.Println("OPEN " + u); return nil }
 		fmt.Println(url)
 		select {}
 	}
